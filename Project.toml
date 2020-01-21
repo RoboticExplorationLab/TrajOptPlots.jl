@@ -1,0 +1,4 @@
+name = "TrajOptPlots"
+uuid = "7770976a-8dee-4930-bf39-a1782fd21ce6"
+authors = ["Brian Jackson <bjack205@gmail.com>"]
+version = "0.1.0"
