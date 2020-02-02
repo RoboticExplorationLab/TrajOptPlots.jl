@@ -22,11 +22,11 @@ visualize!(vis, solver::TrajectoryOptimization.AbstractSolver) =
 Animate the trajectory of a rigid body in MeshCat
     Assumes the robot geometry is already loaded into `vis["robot"]`
 """
-function visualize!(vis, model::AbstractModel, Z::Traj)
-    X = states(Z)
-    fps = Int(floor(length(Z)/Z[end].t))
+visualize!(vis, model::AbstractModel, Z::Traj) = visualize!(vis, model, states(Z), Z[end].t)
+function visualize!(vis, model::AbstractModel, X::Vector{<:AbstractVector}, tf)
+    fps = Int(floor(length(X)/tf))
     anim = MeshCat.Animation(fps)
-    for k in eachindex(Z)
+    for k in eachindex(X)
         atframe(anim, k) do
             x = position(model, X[k])
             r = Dynamics.orientation(model, X[k])
@@ -37,6 +37,46 @@ function visualize!(vis, model::AbstractModel, Z::Traj)
     setanimation!(vis, anim)
     return anim
 end
+
+function visualize!(vis, model::AbstractModel, tf::Real, Xs...)
+    num_traj = length(Xs)
+    X = Xs[1]
+    fps = Int(floor(length(X)/tf))
+    anim = MeshCat.Animation(fps)
+    obj,mat = get_mesh!(model)
+    colors = [RGBA(0.8,0,0,1.0), RGBA(0,0.8,0,1.0), RGBA(0.9,0.9,0,1.0)]
+    for i = 2:num_traj
+        mat = MeshPhongMaterial(color=colors[(i%3)+1])
+        setobject!(vis["robot_copies"]["robot$i"], obj, mat)
+    end
+    N = length(X)
+    for k = 1:N
+        atframe(anim, k) do
+            for i in eachindex(Xs)
+                if i == 1
+                    robot = vis["robot"]
+                else
+                    robot = vis["robot_copies"]["robot$i"]
+                end
+                X = Xs[i]
+                x = position(model, X[k])
+                q = UnitQuaternion(Dynamics.orientation(model, X[k]))
+                settransform!(robot, compose(Translation(x), LinearMap(Quat(q))))
+            end
+        end
+    end
+    setanimation!(vis, anim)
+    return anim
+end
+
+""" Visualize a single frame """
+function visualize!(vis, model::AbstractModel, x::AbstractVector{<:Real})
+    p = position(model, x)
+    r = Dynamics.orientation(model, x)
+    q = UnitQuaternion(Dynamics.orientation(model, x))
+    settransform!(vis["robot"], compose(Translation(p), LinearMap(Quat(q))))
+end
+
 
 function add_cylinders!(vis,x,y,r; height=1.5, idx=0, robot_radius=0.0)
     for i in eachindex(x)
@@ -78,7 +118,8 @@ function set_mesh!(vis, model::AbstractModel; kwargs...)
 end
 
 function get_mesh!(::Dynamics.YakPlane)
-    meshfile = joinpath(@__DIR__,"..","data","meshes","piper","piper_pa18.obj")
+    # meshfile = joinpath(@__DIR__,"..","data","meshes","piper","piper_pa18.obj")
+    meshfile = joinpath(@__DIR__,"..","data","meshes","cirrus","Cirrus.obj")
     jpg = joinpath(@__DIR__,"..","data","meshes","piper","piper_diffuse.jpg")
     img = PngImage(jpg)
     texture = Texture(image=img)
@@ -96,22 +137,6 @@ function set_mesh!(vis, model::Dynamics.YakPlane)
 end
 
 
-function visualize!(vis, model::Dynamics.Quadrotor, Z::Traj)
-
-    X = states(Z)
-    fps = Int(round(length(Z)/Z[end].t))
-    anim = MeshCat.Animation(fps)
-    for k in eachindex(Z)
-        atframe(anim, k) do
-            x = X[k]
-            r = @SVector [x[1], x[2], x[3]]
-            q = UnitQuaternion(x[4], x[5], x[6], x[7])
-            settransform!(vis["robot"], compose(Translation(r), LinearMap(Quat(q))))
-        end
-    end
-    setanimation!(vis, anim)
-    return anim
-end
 
 function waypoints!(vis, model::AbstractModel, Z::Traj; length=0, inds=Int[])
     N = size(Z,1)
@@ -125,11 +150,38 @@ function waypoints!(vis, model::AbstractModel, Z::Traj; length=0, inds=Int[])
     obj,mat = get_mesh!(model)
     delete!(vis["waypoints"])
     for i in inds
-        setobject!(vis["waypoints"]["point$i"], obj, mat)
+        setobject!(vis["waypoints"]["point$i"]["geom"], obj, mat)
+        settransform!(vis["waypoints"]["point$i"]["geom"], compose(Translation(0,0,0.07),LinearMap( RotY(pi/2)*RotZ(-pi/2) )))
         x = state(Z[i])
         r = position(model, x)
         q = UnitQuaternion(orientation(model, x))
         settransform!(vis["waypoints"]["point$i"], compose(Translation(r), LinearMap(Quat(q))))
+    end
+end
+
+function waypoints!(vis, model, Xs...; length=0, inds=Int[])
+    colors = [RGBA(0.0,0,0,1.0), RGBA(0,0.8,0,1.0), RGBA(0.9,0.9,0,1.0)]
+    X = Xs[1]
+    N = size(X,1)
+    if length > 0 && isempty(inds)
+        inds = Int.(round.(range(1,N,length=length)))
+    elseif !isempty(inds) && length == 0
+        length = size(inds,1)
+    else
+        throw(ArgumentError("Have to pass either length or inds, but not both"))
+    end
+    obj,mat = get_mesh!(model)
+    delete!(vis["waypoints"])
+    for i in inds
+        for (j,X) in enumerate(Xs)
+            setobject!(vis["waypoints"]["robot$j"]["point$i"]["geom"],
+                obj, MeshPhongMaterial(color=colors[(j-1%3)+1]))
+            x = X[i]
+            r = x.r
+            q = x.q
+            settransform!(vis["waypoints"]["robot$j"]["point$i"],
+                compose(Translation(r), LinearMap(Quat(q))))
+        end
     end
 end
 
