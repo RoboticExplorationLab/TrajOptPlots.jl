@@ -22,7 +22,9 @@ end
 
 function Plots.plot(solver::TrajectoryOptimization.AbstractSolver)
     p = plot()
-    plot!(get_constraints(solver))
+    if solver isa TrajectoryOptimization.ConstrainedSolver
+        plot!(get_constraints(solver))
+    end
     plot!(get_model(solver), get_trajectory(solver))
     p
 end

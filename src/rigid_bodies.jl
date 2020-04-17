@@ -93,7 +93,7 @@ end
 """ Set state to RBState """
 function visualize!(vis, x::RBState{<:Real})
     p = position(x)
-    q = Dynamics.orientation(x)
+    q = orientation(x)
     settransform!(vis, compose(Translation(p), LinearMap(Quat(q))))
 end
 
