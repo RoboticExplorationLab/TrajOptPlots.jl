@@ -20,6 +20,8 @@ end
 
 visualize!(vis, solver::TrajectoryOptimization.AbstractSolver) =
     visualize!(vis, get_model(solver), get_trajectory(solver))
+visualize!(vis, solver::TrajOptCore.AbstractSolver) =
+    visualize!(vis, get_model(solver), get_trajectory(solver))
 
 """
 Visualize a single configuration
