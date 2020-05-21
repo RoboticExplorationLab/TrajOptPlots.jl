@@ -2,19 +2,16 @@ export
     plot,
     plot_trajectory!
 
-function Plots.plot(X::Vector{SVector{N,Float64}}, inds=1:N; kwargs...) where N
-    A = Array(hcat(X...))[inds,:]
-    plot(A'; kwargs...)
-end
-
-function Plots.plot(t, X::Vector{SVector{N,Float64}}, inds=1:N; kwargs...) where N
+Plots.plot(X::Vector{<:StaticVector{N,Float64}}, inds=1:N; kwargs...) where N = plot(1:length(X), X, inds; kwargs...)
+function Plots.plot(t, X::Vector{<:StaticVector{N,Float64}}, inds=1:N; kwargs...) where N
     A = Array(hcat(X...))[inds,:]
     plot(t[1:length(X)], A'; kwargs...)
 end
 
-function Plots.plot!(X::Vector{SVector{N,Float64}}, inds=1:N; kwargs...) where N
+Plots.plot!(X::Vector{<:StaticVector{N,Float64}}, inds=1:N; kwargs...) where N = plot(1:length(X), X, inds; kwargs...)
+function Plots.plot!(t, X::Vector{<:StaticVector{N,Float64}}, inds=1:N; kwargs...) where N
     A = Array(hcat(X...))[inds,:]
-    plot!(A'; kwargs...)
+    plot!(t[1:length(X)], A'; kwargs...)
 end
 
 function plot_trajectory!(X::Vector; kwargs...)

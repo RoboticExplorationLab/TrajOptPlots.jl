@@ -36,7 +36,7 @@ function visualize!(vis, model::RobotZoo.Cartpole, x::SVector)
     θ = x[2]
     q = expm((pi-θ) * @SVector [1,0,0])
     settransform!(vis["robot","cart"], Translation(0,-y,0))
-    settransform!(vis["robot","cart","pole","geom"], LinearMap(Quat(q)))
+    settransform!(vis["robot","cart","pole","geom"], LinearMap(UnitQuaternion(q)))
 end
 
 # Acrobot (doublependulum)
@@ -58,8 +58,8 @@ end
 function visualize!(vis, model::RobotZoo.Acrobot, x::SVector)
     e1 = @SVector [1,0,0]
     q1,q2 = expm((x[1]-pi/2)*e1), expm(x[2]*e1)
-    settransform!(vis["robot","link1"], LinearMap(Quat(q1)))
-    settransform!(vis["robot","link1","link2"], compose(Translation(0,0,model.l[1]), LinearMap(Quat(q2))))
+    settransform!(vis["robot","link1"], LinearMap(UnitQuaternion(q1)))
+    settransform!(vis["robot","link1","link2"], compose(Translation(0,0,model.l[1]), LinearMap(UnitQuaternion(q2))))
 end
 
 # Dubins Car
@@ -73,8 +73,8 @@ end
 
 # Quadrotor
 function _set_mesh!(vis, model::RobotZoo.Quadrotor)
-    traj_folder = joinpath(dirname(pathof(TrajectoryOptimization)),"..")
-    urdf_folder = joinpath(traj_folder, "dynamics","urdf")
+    traj_folder = dirname(pathof(RobotZoo))
+    urdf_folder = joinpath(traj_folder, "urdf")
     obj = joinpath(urdf_folder, "quadrotor_base.obj")
     quad_scaling = 0.085
     # quad_scaling = 0.15
@@ -99,7 +99,7 @@ function _set_mesh!(vis, ::RobotZoo.YakPlane)
     settransform!(vis["geom"], compose(Translation(0,0,0.07),LinearMap( RotY(pi/2)*RotZ(-pi/2) )))
 end
 
-_set_mesh!(vis, model::TrajectoryOptimization.InfeasibleModel) = _set_mesh!(vis, model.model)
+_set_mesh!(vis, model::ALTRO.InfeasibleModel) = _set_mesh!(vis, model.model)
 
 function _set_mesh!(vis, ::RobotZoo.Satellite; dims=[1,1,2]*0.5)
     obj = HyperRectangle(Vec((-dims/2)...), Vec(dims...))

@@ -5,13 +5,14 @@ using GeometryTypes
 using Rotations
 using CoordinateTransformations
 using TrajectoryOptimization
-using TrajOptCore
+# using TrajOptCore
 using Plots
 using StaticArrays
 using FileIO
 using MeshIO
 using RobotDynamics
 using RobotZoo
+using ALTRO
 
 import RobotDynamics: orientation
 

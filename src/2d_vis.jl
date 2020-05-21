@@ -12,24 +12,24 @@ function Plots.plot!(con::CircleConstraint{T,P}) where {T,P}
 end
 
 @inline Plots.plot!(plot::TrajectoryOptimization.AbstractConstraint) = nothing
-@inline Plots.plot!(con::TrajOptCore.ConVal) = plot!(con.con)
+@inline Plots.plot!(con::TrajectoryOptimization.ConVal) = plot!(con.con)
 
-function Plots.plot!(conSet::TrajOptCore.AbstractConstraintSet)
+function Plots.plot!(conSet::TrajectoryOptimization.AbstractConstraintSet)
     for con in conSet
         plot!(con)
     end
 end
 
-function Plots.plot(solver::TrajectoryOptimization.AbstractSolver)
+function Plots.plot(solver::ALTRO.AbstractSolver)
     p = plot()
-    if solver isa TrajectoryOptimization.ConstrainedSolver
+    if solver isa ALTRO.ConstrainedSolver
         plot!(get_constraints(solver))
     end
     plot!(get_model(solver), get_trajectory(solver))
     p
 end
 
-@inline Plots.plot!(model::TrajectoryOptimization.InfeasibleModel, Z::Traj) = plot!(model.model, Z)
+@inline Plots.plot!(model::ALTRO.InfeasibleModel, Z::Traj) = plot!(model.model, Z)
 function Plots.plot!(car::RobotZoo.DubinsCar, Z::Traj)
     plot_trajectory!(states(Z), c=:black, lw=2.0)
 end

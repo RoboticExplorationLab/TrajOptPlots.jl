@@ -1,26 +1,20 @@
 # import TrajectoryOptimization.Controllers: RBState
 
-import TrajectoryOptimization: get_trajectory
+import TrajectoryOptimization: get_trajectory, get_model
 
 export
-    Quat,
     set_mesh!,
     add_cylinders!,
     waypoints!,
     clear_waypoints!,
     add_point!
 
-# Rotations.Quat(q::UnitQuaternion) = Quat(q.w, q.x, q.y, q.z)
-# TrajectoryOptimization.UnitQuaternion(q::Rotations.Quat) = UnitQuaternion(q.w, q.x, q.y, q.z)
-
 function plot_cylinder(vis,c1,c2,radius,mat,name="")
     geom = Cylinder(Point3f0(c1),Point3f0(c2),convert(Float32,radius))
     setobject!(vis["cyl"][name],geom,MeshPhongMaterial(color=RGBA(1, 0, 0, 1.0)))
 end
 
-visualize!(vis, solver::TrajectoryOptimization.AbstractSolver) =
-    visualize!(vis, get_model(solver), get_trajectory(solver))
-visualize!(vis, solver::TrajOptCore.AbstractSolver) =
+visualize!(vis, solver::ALTRO.AbstractSolver) =
     visualize!(vis, get_model(solver), get_trajectory(solver))
 
 """
@@ -77,7 +71,7 @@ function visualize!(vis, model::AbstractModel, tf::Real, Xs...)
                 X = Xs[i]
                 x = position(model, X[k])
                 q = UnitQuaternion(Dynamics.orientation(model, X[k]))
-                settransform!(robot, compose(Translation(x), LinearMap(Quat(q))))
+                settransform!(robot, compose(Translation(x), LinearMap(UnitQuaternion(q))))
             end
         end
     end
@@ -85,18 +79,11 @@ function visualize!(vis, model::AbstractModel, tf::Real, Xs...)
     return anim
 end
 
-# """ Visualize a single frame """
-# function visualize!(vis, model::AbstractModel, x::AbstractVector{<:Real})
-#     p = position(model, x)
-#     q = UnitQuaternion(Dynamics.orientation(model, x))
-#     settransform!(vis["robot"], compose(Translation(p), LinearMap(Quat(q))))
-# end
-
 """ Set state to RBState """
 function visualize!(vis, x::RBState{<:Real})
     p = position(x)
     q = orientation(x)
-    settransform!(vis, compose(Translation(p), LinearMap(Quat(q))))
+    settransform!(vis, compose(Translation(p), LinearMap(UnitQuaternion(q))))
 end
 
 
@@ -115,7 +102,7 @@ end
 #                 x = states(model, Z[k], i)
 #                 r = position(model.model, x)
 #                 q = UnitQuaternion(orientation(model.model, x))
-#                 settransform!(vis["robot"]["copy$i"], compose(Translation(r), LinearMap(Quat(q))))
+#                 settransform!(vis["robot"]["copy$i"], compose(Translation(r), LinearMap(UnitQuaternion(q))))
 #             end
 #         end
 #     end
@@ -134,7 +121,7 @@ function add_cylinders!(vis,x,y,r; height=1.5, idx=0, robot_radius=0.0)
     end
 end
 
-function add_cylinders!(vis,solver::TrajectoryOptimization.AbstractSolver; kwargs...)
+function add_cylinders!(vis,solver::ALTRO.AbstractSolver; kwargs...)
     conSet = get_constraints(solver)
     idx = 0
     for conVal in conSet.constraints
@@ -188,7 +175,7 @@ function waypoints!(vis, model, Xs...; length=0, inds=Int[])
             r = x.r
             q = x.q
             settransform!(vis["waypoints"]["robot$j"]["point$i"],
-                compose(Translation(r), LinearMap(Quat(q))))
+                compose(Translation(r), LinearMap(UnitQuaternion(q))))
         end
     end
 end
