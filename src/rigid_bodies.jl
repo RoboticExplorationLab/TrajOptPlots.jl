@@ -1,44 +1,35 @@
 # import TrajectoryOptimization.Controllers: RBState
 
-import TrajectoryOptimization: get_trajectory
+using TrajectoryOptimization: get_trajectory, get_model, AbstractTrajectory
 
-export
-    Quat,
-    set_mesh!,
-    add_cylinders!,
-    waypoints!,
-    clear_waypoints!,
-    add_point!
 
-# Rotations.Quat(q::UnitQuaternion) = Quat(q.w, q.x, q.y, q.z)
-# TrajectoryOptimization.UnitQuaternion(q::Rotations.Quat) = UnitQuaternion(q.w, q.x, q.y, q.z)
+visualize!(vis, solver) = visualize!(vis, get_model(solver), get_trajectory(solver))
 
-function plot_cylinder(vis,c1,c2,radius,mat,name="")
-    geom = Cylinder(Point3f0(c1),Point3f0(c2),convert(Float32,radius))
-    setobject!(vis["cyl"][name],geom,MeshPhongMaterial(color=RGBA(1, 0, 0, 1.0)))
+"""
+    visualize!(vis, model, x)
+
+Visualize a single configuration.
+Defaults to using the `position` and `orientation` methods on `model`.
+
+Overload this method to specify the visualization for a specific model.
+"""
+function visualize!(vis, model::AbstractModel, x::AbstractVector)
+    visualize!(vis, RBState(model, x))
 end
 
-visualize!(vis, solver::TrajectoryOptimization.AbstractSolver) =
-    visualize!(vis, get_model(solver), get_trajectory(solver))
-visualize!(vis, solver::TrajOptCore.AbstractSolver) =
-    visualize!(vis, get_model(solver), get_trajectory(solver))
-
-"""
-Visualize a single configuration
-    Defaults to using the `position` and `orientation` methods on `model`
-"""
-function visualize!(vis, model::AbstractModel, x::SVector)
-    r = position(model, x)
-    q = orientation(model, x)
-    T = compose(Translation(r), LinearMap(q))
-    settransform!(vis["robot"], T)
+""" Set state to RBState """
+function visualize!(vis, x::RBState{<:Real})
+    p = position(x)
+    q = orientation(x)
+    settransform!(vis, compose(Translation(p), LinearMap(UnitQuaternion(q))))
 end
 
 """
 Animate the trajectory of a rigid body in MeshCat
     Assumes the robot geometry is already loaded into `vis["robot"]`
 """
-visualize!(vis, model::AbstractModel, Z::Traj) = visualize!(vis, model, states(Z), Z[end].t)
+visualize!(vis, model::AbstractModel, Z::AbstractTrajectory) =
+    visualize!(vis, model, states(Z), Z[end].t)
 function visualize!(vis, model::AbstractModel, X::Vector{<:AbstractVector}, tf)
     fps = Int(floor(length(X)/tf))
     anim = MeshCat.Animation(fps)
@@ -54,75 +45,45 @@ end
 """
 Visualize many different trajectories of the same model
 """
+function visualize!(vis, probs...)
+    model = get_model(probs[1])
+    visualize!(vis, model, get_trajectory.(probs)...)
+end
+function visualize!(vis, model::AbstractModel, Zs::Vararg{<:AbstractTrajectory})
+    tf = Zs[1][end].t
+    visualize!(vis, model, tf, states.(Zs)...)
+end
 function visualize!(vis, model::AbstractModel, tf::Real, Xs...)
-    num_traj = length(Xs)
-    X = Xs[1]
-    fps = Int(floor(length(X)/tf))
+    N = length(Xs[1])
+    fps = Int(floor(N/tf))
     anim = MeshCat.Animation(fps)
-    obj,mat = get_mesh!(model)
-    colors = [RGBA(0.8,0,0,1.0), RGBA(0,0.8,0,1.0), RGBA(0.9,0.9,0,1.0)]
+    num_traj = length(Xs)
+    @show num_traj
     for i = 2:num_traj
-        mat = MeshPhongMaterial(color=colors[(i%3)+1])
-        setobject!(vis["robot_copies"]["robot$i"], obj, mat)
+        TrajOptPlots.set_mesh!(vis["robot_copies/robot$i"], model)
     end
-    N = length(X)
     for k = 1:N
         atframe(anim, k) do
-            for i in eachindex(Xs)
+            for i = 1:num_traj
                 if i == 1
-                    robot = vis["robot"]
+                    robot = vis
                 else
                     robot = vis["robot_copies"]["robot$i"]
                 end
-                X = Xs[i]
-                x = position(model, X[k])
-                q = UnitQuaternion(Dynamics.orientation(model, X[k]))
-                settransform!(robot, compose(Translation(x), LinearMap(Quat(q))))
+                visualize!(robot, model, Xs[i][k]) 
             end
         end
     end
     setanimation!(vis, anim)
-    return anim
-end
-
-# """ Visualize a single frame """
-# function visualize!(vis, model::AbstractModel, x::AbstractVector{<:Real})
-#     p = position(model, x)
-#     q = UnitQuaternion(Dynamics.orientation(model, x))
-#     settransform!(vis["robot"], compose(Translation(p), LinearMap(Quat(q))))
-# end
-
-""" Set state to RBState """
-function visualize!(vis, x::RBState{<:Real})
-    p = position(x)
-    q = orientation(x)
-    settransform!(vis, compose(Translation(p), LinearMap(Quat(q))))
 end
 
 
-# """ Visualize a CopyModel """
-# function visualize!(vis, model::Dynamics.CopyModel{K}, Z::Traj) where K
-#     N = length(Z)
-#     fps = Int(floor(N/Z[end].t))
-#     anim = MeshCat.Animation(fps)
-#     delete!(vis["robot"])
-#     for i = 1:K
-#         _set_mesh!(vis["robot"]["copy$i"], model.model)
-#     end
-#     for k = 1:N
-#         atframe(anim, k) do
-#             for i = 1:K
-#                 x = states(model, Z[k], i)
-#                 r = position(model.model, x)
-#                 q = UnitQuaternion(orientation(model.model, x))
-#                 settransform!(vis["robot"]["copy$i"], compose(Translation(r), LinearMap(Quat(q))))
-#             end
-#         end
-#     end
-#     setanimation!(vis, anim)
-#     return anim
-# end
 
+#--- Environment plotting
+function plot_cylinder(vis,c1,c2,radius,mat,name="")
+    geom = Cylinder(Point3f0(c1),Point3f0(c2),convert(Float32,radius))
+    setobject!(vis["cyl"][name],geom,MeshPhongMaterial(color=RGBA(1, 0, 0, 1.0)))
+end
 
 function add_cylinders!(vis,x,y,r; height=1.5, idx=0, robot_radius=0.0)
     for i in eachindex(x)
@@ -134,7 +95,7 @@ function add_cylinders!(vis,x,y,r; height=1.5, idx=0, robot_radius=0.0)
     end
 end
 
-function add_cylinders!(vis,solver::TrajectoryOptimization.AbstractSolver; kwargs...)
+function add_cylinders!(vis,solver; kwargs...)
     conSet = get_constraints(solver)
     idx = 0
     for conVal in conSet.constraints
@@ -146,11 +107,16 @@ function add_cylinders!(vis,solver::TrajectoryOptimization.AbstractSolver; kwarg
     end
 end
 
+function add_point!(vis, x::AbstractVector;
+        radius=0.1, color=colorant"green", name="point")
+    setobject!(vis[name], HyperSphere(Point3f0(x[1], x[2], x[3]), Float32(radius)),
+        MeshPhongMaterial(color=color))
+end
 
 
 
-
-function waypoints!(vis, model::AbstractModel, Z::Traj; length=0, inds=Int[])
+#--- Waypoints
+function waypoints!(vis, model::AbstractModel, Z::AbstractTrajectory; length=0, inds=Int[])
     N = size(Z,1)
     if length > 0 && isempty(inds)
         inds = Int.(round.(range(1,N,length=length)))
@@ -188,15 +154,9 @@ function waypoints!(vis, model, Xs...; length=0, inds=Int[])
             r = x.r
             q = x.q
             settransform!(vis["waypoints"]["robot$j"]["point$i"],
-                compose(Translation(r), LinearMap(Quat(q))))
+                compose(Translation(r), LinearMap(UnitQuaternion(q))))
         end
     end
 end
 
 clear_waypoints!(vis) = delete!(vis["waypoints"])
-
-function add_point!(vis, x::AbstractVector;
-        radius=0.1, color=colorant"green", name="point")
-    setobject!(vis[name], HyperSphere(Point3f0(x[1], x[2], x[3]), Float32(radius)),
-        MeshPhongMaterial(color=color))
-end
