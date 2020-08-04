@@ -1,20 +1,39 @@
-export
-    plot,
-    plot_trajectory!
 
-function Plots.plot(X::Vector{SVector{N,Float64}}, inds=1:N; kwargs...) where N
-    A = Array(hcat(X...))[inds,:]
-    plot(A'; kwargs...)
+
+function Plots.plot(A::Vector{<:SVector{N}}, inds=1:N; kwargs...) where N
+    n = length(inds)
+    X = zeros(n,length(A))
+    for k in eachindex(A)
+        X[:,k] = A[k][inds]
+    end
+    plot(X'; kwargs...)
 end
 
-function Plots.plot(t, X::Vector{SVector{N,Float64}}, inds=1:N; kwargs...) where N
-    A = Array(hcat(X...))[inds,:]
-    plot(t[1:length(X)], A'; kwargs...)
+function Plots.plot(t::Vector{<:Real}, A::Vector{<:SVector{N}}, inds=1:N; kwargs...) where N
+    n = length(inds)
+    X = zeros(n,length(A))
+    for k in eachindex(A)
+        X[:,k] = A[k][inds]
+    end
+    plot(t[1:size(X,2)], X'; kwargs...)
 end
 
-function Plots.plot!(X::Vector{SVector{N,Float64}}, inds=1:N; kwargs...) where N
-    A = Array(hcat(X...))[inds,:]
-    plot!(A'; kwargs...)
+function Plots.plot!(A::Vector{<:SVector{N}}, inds=1:N; kwargs...) where N
+    n = length(inds)
+    X = zeros(n,length(A))
+    for k in eachindex(A)
+        X[:,k] = A[k][inds]
+    end
+    plot!(X'; kwargs...)
+end
+
+function Plots.plot!(t::Vector{<:Real}, A::Vector{<:SVector{N}}, inds=1:N; kwargs...) where N
+    n = length(inds)
+    X = zeros(n,length(A))
+    for k in eachindex(A)
+        X[:,k] = A[k][inds]
+    end
+    plot!(t[1:size(X,2)], X'; kwargs...)
 end
 
 function plot_trajectory!(X::Vector; kwargs...)
