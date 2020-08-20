@@ -13,7 +13,7 @@ Defaults to using the `position` and `orientation` methods on `model`.
 
 Overload this method to specify the visualization for a specific model.
 """
-function visualize!(vis, model::AbstractModel, x::AbstractVector, addrobot::Bool=true)
+function visualize!(vis, model::AbstractModel, x::StaticVector, addrobot::Bool=true)
     visualize!(vis, RBState(model, x), addrobot)
 end
 

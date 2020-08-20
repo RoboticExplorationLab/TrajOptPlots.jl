@@ -40,7 +40,7 @@ function _set_mesh!(vis, model::RobotZoo.Cartpole)
     settransform!(vis["cart","pole"], Translation(0.75*dim[1],0,dim[3]/2))
 end
 
-function visualize!(vis, model::RobotZoo.Cartpole, x::AbstractVector)
+function visualize!(vis, model::RobotZoo.Cartpole, x::StaticVector)
     y = x[1]
     θ = x[2]
     q = expm((pi-θ) * @SVector [1,0,0])
@@ -64,7 +64,7 @@ function _set_mesh!(vis, model::RobotZoo.Acrobot)
     settransform!(vis["link1","joint"], Translation(0,0,model.l[2]))
 end
 
-function visualize!(vis, model::RobotZoo.Acrobot, x::AbstractVector)
+function visualize!(vis, model::RobotZoo.Acrobot, x::StaticVector)
     e1 = @SVector [1,0,0]
     q1,q2 = expm((x[1]-pi/2)*e1), expm(x[2]*e1)
     settransform!(vis["robot","link1"], LinearMap(UnitQuaternion(q1)))
