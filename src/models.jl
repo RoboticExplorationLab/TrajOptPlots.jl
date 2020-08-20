@@ -1,7 +1,16 @@
+using FileIO
+
+function set_mesh!(vis, model::AbstractModel; kwargs...)
+    _set_mesh!(vis["robot"], model; kwargs...)
+end
+
+RobotDynamics.RBState(model::AbstractModel, x) = 
+    RBState(position(model, x), orientation(model, x), zeros(3), zeros(3))
+
 function _set_mesh!(vis, model::RobotZoo.DoubleIntegrator{<:Any,2})
     radius = 0.1f0
     body = Cylinder(Point3f0(0,0,0), Point3f0(0,0,0.05), radius)
-    setobject!(vis["geom"]["body"], body, MeshPhongMaterial(color=colorant"blue"))
+    setobject!(vis["geom"]["body"], body, MeshPhongMaterial(color=colorant"green"))
 end
 
 # Pendulum
@@ -31,7 +40,7 @@ function _set_mesh!(vis, model::RobotZoo.Cartpole)
     settransform!(vis["cart","pole"], Translation(0.75*dim[1],0,dim[3]/2))
 end
 
-function visualize!(vis, model::RobotZoo.Cartpole, x::StaticVector)
+function visualize!(vis, model::RobotZoo.Cartpole, x::AbstractVector)
     y = x[1]
     θ = x[2]
     q = expm((pi-θ) * @SVector [1,0,0])
@@ -55,7 +64,7 @@ function _set_mesh!(vis, model::RobotZoo.Acrobot)
     settransform!(vis["link1","joint"], Translation(0,0,model.l[2]))
 end
 
-function visualize!(vis, model::RobotZoo.Acrobot, x::SVector)
+function visualize!(vis, model::RobotZoo.Acrobot, x::AbstractVector)
     e1 = @SVector [1,0,0]
     q1,q2 = expm((x[1]-pi/2)*e1), expm(x[2]*e1)
     settransform!(vis["robot","link1"], LinearMap(UnitQuaternion(q1)))
@@ -73,8 +82,7 @@ end
 
 # Quadrotor
 function _set_mesh!(vis, model::RobotZoo.Quadrotor)
-    traj_folder = joinpath(dirname(pathof(TrajectoryOptimization)),"..")
-    urdf_folder = joinpath(traj_folder, "dynamics","urdf")
+    urdf_folder = joinpath(@__DIR__, "..", "data", "meshes")
     obj = joinpath(urdf_folder, "quadrotor_base.obj")
     quad_scaling = 0.085
     # quad_scaling = 0.15
@@ -101,19 +109,16 @@ end
 
 # _set_mesh!(vis, model::TrajectoryOptimization.InfeasibleModel) = _set_mesh!(vis, model.model)
 
-function _set_mesh!(vis, ::RobotZoo.Satellite; dims=[1,1,2]*0.5)
+function _set_mesh!(vis, ::RobotZoo.Satellite; dims=[1,1,2]*0.5, color=colorant"grey70")
     obj = HyperRectangle(Vec((-dims/2)...), Vec(dims...))
-    mat = MeshPhongMaterial(; color=colorant"grey70")
+    mat = MeshPhongMaterial(; color=color)
     setobject!(vis["geom"], obj, mat)
 end
 
-function _set_mesh!(vis, model::RigidBody; dims=[1,1,2]*0.5)
+function _set_mesh!(vis, model::RigidBody; dims=[1,1,2]*0.5, color=colorant"grey70")
     obj = HyperRectangle(Vec((-dims/2)...), Vec(dims...))
-    mat = MeshPhongMaterial(; color=colorant"grey70")
+    mat = MeshPhongMaterial(; color=color)
     setobject!(vis["geom"], obj, mat)
 end
 
 
-function set_mesh!(vis, model::AbstractModel; kwargs...)
-    _set_mesh!(vis["robot"], model)
-end

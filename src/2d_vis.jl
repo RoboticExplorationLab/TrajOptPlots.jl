@@ -3,35 +3,66 @@ function circleShape(x, y, r)
     x .+ r*sin.(θ), y .+ r*cos.(θ)
 end
 
-function Plots.plot!(con::CircleConstraint{T,P}) where {T,P}
-    for i = 1:P
+@recipe function f(con::CircleConstraint; circle_color=:red)
+    p = length(con)
+    for i = 1:p
         circ = circleShape(con.x[i], con.y[i], con.radius[i])
-        plot!(circ, seriestype=[:shape,], lw=0.5, c=:red, linecolor=:red, legend=false,
-            aspect_ratio = :equal)
+        @series begin
+            aspect_ratio --> :equal
+            seriestype := :shape
+            label --> :none
+            linecolor --> circle_color 
+            linewidth --> 0.5
+            fillalpha --> 1
+            fillcolor --> circle_color 
+            primary := false
+            circ
+        end
     end
+    primary := false
+    ()
 end
 
-@inline Plots.plot!(plot::TrajectoryOptimization.AbstractConstraint) = nothing
-@inline Plots.plot!(con::TrajectoryOptimization.ConVal) = plot!(con.con)
+@recipe function f(con::T) where T <: TrajectoryOptimization.AbstractConstraint
+    primary := false
+    ()
+end
 
-function Plots.plot!(conSet::TrajectoryOptimization.AbstractConstraintSet)
+@recipe f(::Type{T}, conval::T) where T <: TrajectoryOptimization.ConVal = conval.con
+
+
+@recipe function f(conSet::TrajectoryOptimization.AbstractConstraintSet)
     for con in conSet
-        plot!(con)
+        @series begin
+            con
+        end
     end
+    aspect_ratio --> :equal
+    primary := false
+    ()
 end
 
-# @inline Plots.plot!(model::TrajectoryOptimization.InfeasibleModel, Z::Traj) = plot!(model.model, Z)
-function Plots.plot!(car::RobotZoo.DubinsCar, Z::Traj)
-    plot_trajectory!(states(Z), c=:black, lw=2.0)
+
+## Plotting trajectories for specific models
+@recipe function f(prob::Problem) 
+    @series begin
+        prob.constraints 
+    end
+    (prob.model, prob.Z)
 end
 
-@inline Plots.plot!(model::RobotZoo.DoubleIntegrator, Z::Traj) = plot!(model, states(Z))
-function Plots.plot!(model::RobotZoo.DoubleIntegrator, X)
-    plot!(Z, lw=2.0, labels=["position" "velocity"])
+@recipe function f(car::RobotZoo.DubinsCar, Z::Traj)
+    linecolor --> :black
+    linewidth --> 2
+    aspect_ratio --> :equal
+    xind := 1
+    yind := 2
+    RobotDynamics.Traj2((Z,))
 end
 
-function plot_trajectory!(X::Vector{<:AbstractVector})
-    x = [x[1] for x in X]
-    y = [x[2] for x in X]
-    plot(x,y, aspect_ratio=:equal)
+@recipe function f(model::RobotZoo.DoubleIntegrator, Z::Traj)
+    label --> ["position" "velocity"]
+    linewidth --> 2
+    (RobotDynamics.get_times(Z), states(Z))
 end
+

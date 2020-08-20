@@ -13,15 +13,16 @@ Defaults to using the `position` and `orientation` methods on `model`.
 
 Overload this method to specify the visualization for a specific model.
 """
-function visualize!(vis, model::AbstractModel, x::AbstractVector)
-    visualize!(vis, RBState(model, x))
+function visualize!(vis, model::AbstractModel, x::AbstractVector, addrobot::Bool=true)
+    visualize!(vis, RBState(model, x), addrobot)
 end
 
 """ Set state to RBState """
-function visualize!(vis, x::RBState{<:Real})
+function visualize!(vis, x::RBState{<:Real}, addrobot::Bool=true)
     p = position(x)
     q = orientation(x)
-    settransform!(vis, compose(Translation(p), LinearMap(UnitQuaternion(q))))
+    robot = addrobot ? vis["robot"] : vis
+    settransform!(robot, compose(Translation(p), LinearMap(UnitQuaternion(q))))
 end
 
 """
@@ -29,18 +30,7 @@ Animate the trajectory of a rigid body in MeshCat
     Assumes the robot geometry is already loaded into `vis["robot"]`
 """
 visualize!(vis, model::AbstractModel, Z::AbstractTrajectory) =
-    visualize!(vis, model, states(Z), Z[end].t)
-function visualize!(vis, model::AbstractModel, X::Vector{<:AbstractVector}, tf)
-    fps = Int(floor(length(X)/tf))
-    anim = MeshCat.Animation(fps)
-    for k in eachindex(X)
-        atframe(anim, k) do
-            visualize!(vis, model, X[k])
-        end
-    end
-    setanimation!(vis, anim)
-    return anim
-end
+    visualize!(vis, model, Z[end].t, states(Z))
 
 """
 Visualize many different trajectories of the same model
@@ -58,7 +48,6 @@ function visualize!(vis, model::AbstractModel, tf::Real, Xs...)
     fps = Int(floor(N/tf))
     anim = MeshCat.Animation(fps)
     num_traj = length(Xs)
-    @show num_traj
     for i = 2:num_traj
         TrajOptPlots.set_mesh!(vis["robot_copies/robot$i"], model)
     end
@@ -85,22 +74,21 @@ function plot_cylinder(vis,c1,c2,radius,mat,name="")
     setobject!(vis["cyl"][name],geom,MeshPhongMaterial(color=RGBA(1, 0, 0, 1.0)))
 end
 
-function add_cylinders!(vis,x,y,r; height=1.5, idx=0, robot_radius=0.0)
+function add_cylinders!(vis,x,y,r; height=1.5, idx=0, robot_radius=0.0, color=colorant"red")
     for i in eachindex(x)
         obj = Cylinder(Point3f0(x[i],y[i],0.0), Point3f0(x[i],y[i],height),
             Float32(r[i] - robot_radius))
-        mat = MeshPhongMaterial(color=RGBA(1,0,0,1.0))
+        mat = MeshPhongMaterial(color=color)
         j = i + idx
         setobject!(vis["obs"]["cyl$j"], obj, mat)
     end
 end
 
 function add_cylinders!(vis,solver; kwargs...)
-    conSet = get_constraints(solver)
+    conSet = TrajectoryOptimization.get_constraints(solver)
     idx = 0
-    for conVal in conSet.constraints
-        if conVal.con isa CircleConstraint
-            con = conVal.con
+    for con in conSet.constraints
+        if con isa CircleConstraint
             add_cylinders!(vis, con.x, con.y, con.radius, idx=idx; kwargs...)
             idx += length(con)
         end
