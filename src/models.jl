@@ -81,14 +81,14 @@ function _set_mesh!(vis, model::RobotZoo.DubinsCar)
 end
 
 # Quadrotor
-function _set_mesh!(vis, model::RobotZoo.Quadrotor; scaling=1.0)
+function _set_mesh!(vis, model::RobotZoo.Quadrotor; scaling=1.0, color=colorant"black")
     urdf_folder = joinpath(@__DIR__, "..", "data", "meshes")
     obj = joinpath(urdf_folder, "quadrotor_base.obj")
     quad_scaling = 0.085 * scaling
     # quad_scaling = 0.15
     robot_obj = FileIO.load(obj)
     robot_obj.vertices .= robot_obj.vertices .* quad_scaling
-    mat = MeshPhongMaterial(color=colorant"black")
+    mat = MeshPhongMaterial(color=color)
     setobject!(vis["geom"], robot_obj, mat)
 end
 
