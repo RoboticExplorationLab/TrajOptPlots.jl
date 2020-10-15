@@ -104,7 +104,8 @@ end
 
 
 #--- Waypoints
-function waypoints!(vis, model::AbstractModel, Z::AbstractTrajectory; length=0, inds=Int[])
+function waypoints!(vis, model::AbstractModel, Z::AbstractTrajectory; length=0, inds=Int[], 
+        color=nothing, color_end=nothing)
     N = size(Z,1)
     if length > 0 && isempty(inds)
         inds = Int.(round.(range(1,N,length=length)))
@@ -113,9 +114,21 @@ function waypoints!(vis, model::AbstractModel, Z::AbstractTrajectory; length=0, 
     else
         throw(ArgumentError("Have to pass either length or inds, but not both"))
     end
+    if !isnothing(color)
+        if isnothing(color_end)
+            color_end = color
+        end
+        colors = range(color, color_end, length=size(inds,1))
+    end
+
     delete!(vis["waypoints"])
     for (j,i) in enumerate(inds)
-        set_mesh!(vis["waypoints"]["point$i"], model)
+        if isnothing(color)
+            set_mesh!(vis["waypoints"]["point$i"], model)
+        else
+            set_mesh!(vis["waypoints"]["point$i"], model, color=colors[j])
+        end
+            
         # settransform!(vis["waypoints"]["point$i"]["geom"], compose(Translation(0,0,0.07),LinearMap( RotY(pi/2)*RotZ(-pi/2) )))
         visualize!(vis["waypoints"]["point$i"], model, state(Z[i]))
     end
