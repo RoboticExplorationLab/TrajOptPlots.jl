@@ -1,7 +1,8 @@
 module TrajOptPlots
 
 using MeshCat
-using GeometryTypes
+# using GeometryTypes
+using GeometryBasics
 using Rotations
 using CoordinateTransformations
 using TrajectoryOptimization
@@ -19,6 +20,7 @@ export
     visualize!,
     plot
 
+include("meshes.jl")
 include("rigid_bodies.jl")
 include("2d_vis.jl")
 include("models.jl")
