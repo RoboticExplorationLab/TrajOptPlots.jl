@@ -40,12 +40,12 @@ function visualize!(vis, probs...)
     visualize!(vis, model, get_trajectory.(probs)...)
 end
 function visualize!(vis, model::AbstractModel, Zs::Vararg{<:AbstractTrajectory})
-    tf = Zs[1][end].t
+    tf = Zs[1][end].t - Zs[1][1].t
     visualize!(vis, model, tf, states.(Zs)...)
 end
 function visualize!(vis, model::AbstractModel, tf::Real, Xs...)
     N = length(Xs[1])
-    fps = Int(floor(N/tf))
+    fps = Int(floor((N-1)/tf))
     anim = MeshCat.Animation(fps)
     num_traj = length(Xs)
     for i = 2:num_traj
@@ -119,6 +119,7 @@ function waypoints!(vis, model::AbstractModel, Z::AbstractTrajectory; length=0, 
             color_end = color
         end
         colors = range(color, color_end, length=size(inds,1))
+        # set_mesh!(vis, model, color=colors[end])
     end
 
     delete!(vis["waypoints"])
@@ -132,32 +133,7 @@ function waypoints!(vis, model::AbstractModel, Z::AbstractTrajectory; length=0, 
         # settransform!(vis["waypoints"]["point$i"]["geom"], compose(Translation(0,0,0.07),LinearMap( RotY(pi/2)*RotZ(-pi/2) )))
         visualize!(vis["waypoints"]["point$i"], model, state(Z[i]))
     end
-end
-
-function waypoints!(vis, model, Xs...; length=0, inds=Int[])
-    colors = [RGBA(0.0,0,0,1.0), colorant"cyan2", colorant"darkorange"]
-    X = Xs[1]
-    N = size(X,1)
-    if length > 0 && isempty(inds)
-        inds = Int.(round.(range(1,N,length=length)))
-    elseif !isempty(inds) && length == 0
-        length = size(inds,1)
-    else
-        throw(ArgumentError("Have to pass either length or inds, but not both"))
-    end
-    obj,mat = get_mesh!(model)
-    delete!(vis["waypoints"])
-    for i in inds
-        for (j,X) in enumerate(Xs)
-            setobject!(vis["waypoints"]["robot$j"]["point$i"]["geom"],
-                obj, MeshPhongMaterial(color=colors[(j-1%3)+1]))
-            x = X[i]
-            r = x.r
-            q = x.q
-            settransform!(vis["waypoints"]["robot$j"]["point$i"],
-                compose(Translation(r), LinearMap(UnitQuaternion(q))))
-        end
-    end
+    visualize!(vis, model, state(Z[end]))
 end
 
 clear_waypoints!(vis) = delete!(vis["waypoints"])

@@ -1,5 +1,15 @@
 using FileIO
 
+function defcolor(c1, c2, c1def, c2def)
+    if !isnothing(c1) && isnothing(c2)
+        c2 = c1
+    else
+        c1 = isnothing(c1) ? c1def : c1
+        c2 = isnothing(c2) ? c2def : c2
+    end
+    c1,c2
+end
+
 function set_mesh!(vis, model::AbstractModel; kwargs...)
     _set_mesh!(vis["robot"], model; kwargs...)
 end
@@ -7,36 +17,41 @@ end
 RobotDynamics.RBState(model::AbstractModel, x) = 
     RBState(position(model, x), orientation(model, x), zeros(3), zeros(3))
 
-function _set_mesh!(vis, model::RobotZoo.DoubleIntegrator{<:Any,2})
-    radius = 0.1f0
-    body = Cylinder(Point3f0(0,0,0), Point3f0(0,0,0.05), radius)
-    setobject!(vis["geom"]["body"], body, MeshPhongMaterial(color=colorant"green"))
+function _set_mesh!(vis, model::RobotZoo.DoubleIntegrator{<:Any,2}; 
+        color=colorant"green", radius=0.1, height=0.05)
+    radius = Float32(radius) 
+    body = Cylinder(Point3f0(0,0,0), Point3f0(0,0,height), radius)
+    setobject!(vis["geom"]["body"], body, MeshPhongMaterial(color=color))
 end
 
 # Pendulum
-function _set_mesh!(vis, model::RobotZoo.Pendulum)
+function _set_mesh!(vis, model::RobotZoo.Pendulum;
+        color=nothing, color2=nothing, length=model.length)
     hinge = Cylinder(Point3f0(0.05,0,0), Point3f0(-0.05,0,0), 0.05f0)
-    rod   = Cylinder(Point3f0(0,0,0), Point3f0(0,0,model.length), 0.01f0)
-    mass  = HyperSphere(Point3f0(0,0,model.length), 0.05f0)
+    rod   = Cylinder(Point3f0(0,0,0), Point3f0(0,0,length), 0.01f0)
+    mass  = HyperSphere(Point3f0(0,0,length), 0.05f0)
+    c1,c2 = defcolor(color, color2, colorant"blue", colorant"red")
     setobject!(vis["geom"]["hinge"], hinge, MeshPhongMaterial(color=colorant"black"))
-    setobject!(vis["geom"]["rod"  ], rod,   MeshPhongMaterial(color=colorant"blue"))
-    setobject!(vis["geom"]["mass" ], mass , MeshPhongMaterial(color=colorant"red"))
+    setobject!(vis["geom"]["rod"  ], rod,   MeshPhongMaterial(color=c1))
+    setobject!(vis["geom"]["mass" ], mass , MeshPhongMaterial(color=c2))
 end
 
 # Cartpole
-function _set_mesh!(vis, model::RobotZoo.Cartpole)
+function _set_mesh!(vis, model::RobotZoo.Cartpole; 
+        color=nothing, color2=nothing)
     dim = Vec(0.1, 0.3, 0.1)
     rod = Cylinder(Point3f0(0,-10,0), Point3f0(0,10,0), 0.01f0)
     cart = Rect3D(-dim/2, dim)
     hinge = Cylinder(Point3f0(-dim[1]/2,0,dim[3]/2), Point3f0(dim[1],0,dim[3]/2), 0.03f0)
+    c1,c2 = defcolor(color,color2, colorant"blue", colorant"red")
 
     pole = Cylinder(Point3f0(0,0,0),Point3f0(0,0,model.l),0.01f0)
     mass = HyperSphere(Point3f0(0,0,model.l), 0.05f0)
     setobject!(vis["rod"], rod, MeshPhongMaterial(color=colorant"grey"))
-    setobject!(vis["cart","box"],   cart, MeshPhongMaterial(color=colorant"green"))
+    setobject!(vis["cart","box"],   cart, MeshPhongMaterial(color=isnothing(color) ? colorant"green" : color))
     setobject!(vis["cart","hinge"], hinge, MeshPhongMaterial(color=colorant"black"))
-    setobject!(vis["cart","pole","geom","cyl"], pole, MeshPhongMaterial(color=colorant"blue"))
-    setobject!(vis["cart","pole","geom","mass"], mass, MeshPhongMaterial(color=colorant"red"))
+    setobject!(vis["cart","pole","geom","cyl"], pole, MeshPhongMaterial(color=c1))
+    setobject!(vis["cart","pole","geom","mass"], mass, MeshPhongMaterial(color=c2))
     settransform!(vis["cart","pole"], Translation(0.75*dim[1],0,dim[3]/2))
 end
 
@@ -49,19 +64,20 @@ function visualize!(vis, model::RobotZoo.Cartpole, x::StaticVector)
 end
 
 # Acrobot (doublependulum)
-function _set_mesh!(vis, model::RobotZoo.Acrobot)
+function _set_mesh!(vis, model::RobotZoo.Acrobot; color=colorant"blue", thick=0.05)
     hinge = Cylinder(Point3f0(-0.05,0,0), Point3f0(0.05,0,0), 0.05f0)
-    thick = 0.05
     dim1  = Vec(thick, thick, model.l[1])
     link1 = Rect3D(Vec(-thick/2,-thick/2,0),dim1)
     dim2  = Vec(thick, thick, model.l[2])
     link2 = Rect3D(Vec(-thick/2,-thick/2,0),dim2)
-    setobject!(vis["base"], hinge, MeshPhongMaterial(color=colorant"grey"))
-    setobject!(vis["link1"], link1, MeshPhongMaterial(color=colorant"blue"))
-    setobject!(vis["link1","joint"], hinge, MeshPhongMaterial(color=colorant"grey"))
-    setobject!(vis["link1","link2"], link2, MeshPhongMaterial(color=colorant"blue"))
-    settransform!(vis["link1","link2"], Translation(0,0,model.l[2]))
-    settransform!(vis["link1","joint"], Translation(0,0,model.l[2]))
+    mat1 = MeshPhongMaterial(color=colorant"grey")
+    mat2 = MeshPhongMaterial(color=color)
+    setobject!(vis["base"], hinge, mat1) 
+    setobject!(vis["link1"], link1, mat2) 
+    setobject!(vis["link1","joint"], hinge, mat1) 
+    setobject!(vis["link1","link2"], link2, mat2) 
+    settransform!(vis["link1","link2"], Translation(0,0,model.l[1]))
+    settransform!(vis["link1","joint"], Translation(0,0,model.l[1]))
 end
 
 function visualize!(vis, model::RobotZoo.Acrobot, x::StaticVector)
@@ -72,12 +88,14 @@ function visualize!(vis, model::RobotZoo.Acrobot, x::StaticVector)
 end
 
 # Dubins Car
-function _set_mesh!(vis, model::RobotZoo.DubinsCar)
-    radius = Float32(model.radius)
-    body = Cylinder(Point3f0(0,0,0), Point3f0(0,0,0.05), radius)
-    face = Rect3D(Vec(3radius/4, -radius/2, 0), Vec(radius/4, radius, 0.06))
-    setobject!(vis["geom"]["body"], body, MeshPhongMaterial(color=colorant"blue"))
-    setobject!(vis["geom"]["face"], face, MeshPhongMaterial(color=colorant"yellow"))
+function _set_mesh!(vis, model::RobotZoo.DubinsCar; 
+        color=nothing, color2=nothing, height=0.05, radius=model.radius)
+    radius = Float32(radius)
+    body = Cylinder(Point3f0(0,0,0), Point3f0(0,0,height), radius)
+    face = Rect3D(Vec(3radius/4, -radius/2, 0), Vec(radius/4, radius, height*1.1))
+    c1,c2 = defcolor(color, color2, colorant"blue", colorant"yellow")
+    setobject!(vis["geom"]["body"], body, MeshPhongMaterial(color=c1))
+    setobject!(vis["geom"]["face"], face, MeshPhongMaterial(color=c2))
 end
 
 # Quadrotor
@@ -86,24 +104,27 @@ function _set_mesh!(vis, model::RobotZoo.Quadrotor; scaling=1.0, color=colorant"
     # if scaling != 1.0
     #     quad_scaling = 0.085 * scaling
     obj = joinpath(urdf_folder, "quadrotor_scaled.obj")
-
-    # quad_scaling = 0.15
-    # robot_obj = FileIO.load(obj)
-    # robot_obj.vertices .= robot_obj.vertices .* quad_scaling
+    if scaling != 1.0
+        error("Scaling not implemented after switching to MeshCat 0.12")
+    end
     robot_obj = MeshFileGeometry(obj)
     mat = MeshPhongMaterial(color=color)
     setobject!(vis["geom"], robot_obj, mat)
 end
 
 # Yak Plane
-function _set_mesh!(vis, ::RobotZoo.YakPlane)
+function _set_mesh!(vis, ::RobotZoo.YakPlane; color=nothing)
     # meshfile = joinpath(@__DIR__,"..","data","meshes","piper","piper_pa18.obj")
     # meshfile = joinpath(@__DIR__,"..","data","meshes","cirrus","Cirrus.obj")
     meshfile = joinpath(@__DIR__,"..","data","meshes","piper","piper_scaled.obj")
     jpg = joinpath(@__DIR__,"..","data","meshes","piper","piper_diffuse.jpg")
-    img = PngImage(jpg)
-    texture = Texture(image=img)
-    mat = MeshLambertMaterial(map=texture)
+    if isnothing(color)
+        img = PngImage(jpg)
+        texture = Texture(image=img)
+        mat = MeshLambertMaterial(map=texture) 
+    else
+        mat = MeshPhongMaterial(color=color)
+    end
     obj = MeshFileGeometry(meshfile)
     # obj.vertices .= obj.vertices .* scaling
     setobject!(vis["geom"], obj, mat)

@@ -23,6 +23,16 @@ end
     ()
 end
 
+@recipe function f(con::GoalConstraint; xind=1, yind=2)
+    @series begin
+        seriestype := :scatter
+        label --> "goal"
+        markersize --> 10
+        seriescolor --> :green
+        [con.xf[xind]],[con.xf[yind]]
+    end
+end
+
 @recipe function f(con::T) where T <: TrajectoryOptimization.AbstractConstraint
     primary := false
     ()
