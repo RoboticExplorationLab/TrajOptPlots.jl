@@ -18,7 +18,8 @@ import RobotDynamics: orientation
 
 export
     visualize!,
-    plot
+    waypoints!
+
 
 include("meshes.jl")
 include("rigid_bodies.jl")

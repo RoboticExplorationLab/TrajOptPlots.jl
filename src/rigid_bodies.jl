@@ -33,23 +33,42 @@ visualize!(vis, model::AbstractModel, Z::AbstractTrajectory) =
     visualize!(vis, model, Z[end].t, states(Z))
 
 """
-Visualize many different trajectories of the same model
+    visualize!(vis, probs...; kwargs...)
+    visualize!(vis, model, Zs...; kwargs...)
+    visualize!(vis, model, tf, Xs...; kwargs...)
+
+Visualize many different trajectories of the same model.
+
+# Arguments
+* `probs`: any struct that supports `TO.get_model` and `TO.get_trajectory`
+* `Zs`: any `AbstractTrajectory`
+* `Xs`: a vector of state vectors
+* `colors` (optional): Can be either `nothing` (default), a `Colorant`, or a vector of both, of equal length as the number of trajectories. Changes the color of the models in the order provided.
 """
-function visualize!(vis, probs...)
+function visualize!(vis, probs...; kwargs...)
     model = get_model(probs[1])
-    visualize!(vis, model, get_trajectory.(probs)...)
+    visualize!(vis, model, get_trajectory.(probs)...; kwargs...)
 end
-function visualize!(vis, model::AbstractModel, Zs::Vararg{<:AbstractTrajectory})
+function visualize!(vis, model::AbstractModel, Zs::Vararg{<:AbstractTrajectory}; kwargs...)
     tf = Zs[1][end].t - Zs[1][1].t
-    visualize!(vis, model, tf, states.(Zs)...)
+    visualize!(vis, model, tf, states.(Zs)...; kwargs...)
 end
-function visualize!(vis, model::AbstractModel, tf::Real, Xs...)
+function visualize!(vis, model::AbstractModel, tf::Real, Xs...; colors=nothing)
     N = length(Xs[1])
     fps = Int(floor((N-1)/tf))
     anim = MeshCat.Animation(fps)
     num_traj = length(Xs)
+    if isnothing(colors)
+        colors = fill(nothing, length(Xs))
+    elseif colors isa Colorant
+        colors = fill(colors, length(Xs)-1)
+        colors = [nothing; colors]
+    elseif colors isa Vector{<:Union{Nothing, Colorant}}
+        @assert length(colors) == length(Xs) "Number of colors must match the number of trajectories"
+        set_mesh!(vis, model, color=colors[1])
+    end
     for i = 2:num_traj
-        TrajOptPlots.set_mesh!(vis["robot_copies/robot$i"], model)
+        TrajOptPlots.set_mesh!(vis["robot_copies/robot$i"], model, color=colors[i])
     end
     for k = 1:N
         atframe(anim, k) do
@@ -65,7 +84,6 @@ function visualize!(vis, model::AbstractModel, tf::Real, Xs...)
     end
     setanimation!(vis, anim)
 end
-
 
 
 #--- Environment plotting
@@ -104,6 +122,9 @@ end
 
 
 #--- Waypoints
+const TO = TrajectoryOptimization
+waypoints!(vis, solver; kwargs...) = 
+    waypoints!(vis, TO.get_model(solver), TO.get_trajectory(solver); kwargs...)
 function waypoints!(vis, model::AbstractModel, Z::AbstractTrajectory; length=0, inds=Int[], 
         color=nothing, color_end=nothing)
     N = size(Z,1)
@@ -137,3 +158,4 @@ function waypoints!(vis, model::AbstractModel, Z::AbstractTrajectory; length=0, 
 end
 
 clear_waypoints!(vis) = delete!(vis["waypoints"])
+clear_copies!(vis) = delete!(vis["robot_copies"])
