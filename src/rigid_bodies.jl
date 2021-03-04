@@ -159,3 +159,27 @@ end
 
 clear_waypoints!(vis) = delete!(vis["waypoints"])
 clear_copies!(vis) = delete!(vis["robot_copies"])
+clear_traj!(vis) = delete!(vis["traj"])
+
+"""
+    traj3!(vis, X; [inds, kwargs...])
+    traj3!(vis, prob; [inds, kwargs...])
+
+Plot the 3D trajectory in the visualizer. The x,y,z coordinates are given by 
+`inds[1]`, `inds[2]`, and `inds[3]`, respectively (defaults to 1:3). 
+Use `kwargs` to modify the properties of the trajectory. 
+All keyword arguments are passed directly to `MeshCat.LineBasicMaterial`.
+
+The input needs to be the state trajectory, i.e. a vector of vectors. Alternatively,
+you can pass in any type for which `TrajectoryOptimization.states` is defined.
+
+# Example
+    traj3!(vis, states(solver), inds=1:3, linewidth=3.0, color=colorant"red")
+    traj3!(vis, solver, inds=1:3, linewidth=3.0, color=colorant"red")
+"""
+function traj3!(vis, X::AbstractVector{<:AbstractVector}; inds=SA[1,2,3], kwargs...)
+    pts = [Point{3,Float32}(x[inds]) for x in X] 
+    setobject!(vis[:traj], MeshCat.Line(pts, LineBasicMaterial(;kwargs...)))
+end
+
+@inline traj3!(vis, prob; kwargs...) = traj3!(vis, states(prob); kwargs...)

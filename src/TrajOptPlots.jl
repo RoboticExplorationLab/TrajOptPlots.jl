@@ -18,7 +18,8 @@ import RobotDynamics: orientation
 
 export
     visualize!,
-    waypoints!
+    waypoints!,
+    traj3!
 
 
 include("meshes.jl")

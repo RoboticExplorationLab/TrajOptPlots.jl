@@ -30,6 +30,15 @@ initial_states!(prob, X)
 initial_controls!(prob, U)
 visualize!(vis, prob)
 
+traj3!(vis, prob)
+traj3!(vis, prob, inds=1:3)
+traj3!(vis, prob, inds=SA[1,2,3])
+traj3!(vis, prob, inds=[1,2,3])
+traj3!(vis, prob, linewidth=4)
+traj3!(vis, prob, linewidth=4, color=colorant"red")
+
+
+
 # Vis 2 at the same time
 X2 = [@SVector [2sin(t), 2cos(t), -t] for t in times]
 Z2 = Traj(X2, U, push!(diff(times),0))
