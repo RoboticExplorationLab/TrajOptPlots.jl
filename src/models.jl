@@ -98,8 +98,66 @@ function _set_mesh!(vis, model::RobotZoo.DubinsCar;
     setobject!(vis["geom"]["face"], face, MeshPhongMaterial(color=c2))
 end
 
+# BicycleModel
+function _set_mesh!(vis, model::RobotZoo.BicycleModel)
+    L, lr = model.L,  model.lr
+    lf = L - lr
+    ww = 0.23     # wheel width (m)
+    r = 0.3       # wheel radius (m)
+    bw = 0.1      # chassis width (m)
+    wheel = Cylinder(Point3f0(0,-ww/2,0), Point3f0(0,ww/2,0), Float32(r))
+    body = Rect3D(Vec(0,-bw/2,-bw/2), Vec(L,bw,bw))
+    setobject!(vis["geom"], Triad()) 
+    setobject!(vis["geom"]["chassis"]["body"], body, MeshPhongMaterial(color=colorant"gray"))
+    setobject!(vis["geom"]["chassis"]["wheel"], wheel, MeshPhongMaterial(color=colorant"black"))
+    setobject!(vis["geom"]["front"]["wheel"], wheel, MeshPhongMaterial(color=colorant"black"))
+    if model.ref == :rear
+        settransform!(vis["geom"]["front"], compose(Translation(L,0,0)))
+        settransform!(vis["geom"]["chassis"], compose(Translation(0,0,0)))
+    elseif model.ref == :front
+        settransform!(vis["geom"]["front"], compose(Translation(0,0,0)))
+        settransform!(vis["geom"]["chassis"], compose(Translation(-L,0,0)))
+    elseif model.ref == :cg
+        settransform!(vis["geom"]["front"], compose(Translation(lf,0,0)))
+        settransform!(vis["geom"]["chassis"], compose(Translation(-lr,0,0)))
+    end
+    settransform!(vis["geom"], Translation(0,0,r))
+end
+
+function visualize!(vis, model::RobotZoo.BicycleModel, x::StaticVector)
+    θ = x[3]
+    δ = x[4]
+    settransform!(vis["robot"]["geom"], compose(Translation(x[1], x[2],0), LinearMap(RotZ(θ))))
+    settransform!(vis["robot"]["geom"]["front"]["wheel"], LinearMap(RotZ(δ)))
+end
+
+# Planar Rocket
+function _set_mesh!(vis, model::RobotZoo.PlanarRocket;
+        L = model.ℓ,
+        rad = L / 15,
+        Ltip = L / 5,
+        Lcone = L / 10,
+    )
+    fuselage = Cylinder(Point3(0,0,0.), Point3(0,0,L), rad)
+    tip = Cone(Point3(0.,0,L), Point3(0.,0,L+Ltip), rad)
+    gimbal = Cone(Point3(0.,0,-Lcone), Point3(0,0,0.), rad/2)
+    fins = Pyramid(Point3(0,0,0.), L, 2rad*0.95)
+    setobject!(vis["geom"]["fuselage"], fuselage, MeshPhongMaterial(color=colorant"gray"))
+    setobject!(vis["geom"]["fins"], fins, MeshPhongMaterial(color=colorant"black"))
+    setobject!(vis["geom"]["tip"], tip, MeshPhongMaterial(color=colorant"black"))
+    setobject!(vis["geom"]["gimbal"]["cone"], gimbal, MeshPhongMaterial(color=colorant"red"))
+    settransform!(vis["geom"]["gimbal"]["cone"], Translation(0,0,Lcone*0.4))
+end
+
+function visualize!(vis, model::RobotZoo.PlanarRocket, x::StaticArray)
+    settransform!(vis["robot"], compose(Translation(x[1],0,x[2]), LinearMap(RotY(x[3]))))
+    settransform!(vis["robot"]["geom"]["gimbal"], LinearMap(RotY(x[4])))
+end
+
 # Quadrotor
-function _set_mesh!(vis, model::RobotZoo.Quadrotor; scaling=1.0, color=colorant"black")
+function _set_mesh!(vis, model::L;
+        scaling=1.0, color=colorant"black"
+    ) where {L <: Union{RobotZoo.Quadrotor, RobotZoo.PlanarQuadrotor}} 
     urdf_folder = joinpath(@__DIR__, "..", "data", "meshes")
     # if scaling != 1.0
     #     quad_scaling = 0.085 * scaling
@@ -110,6 +168,26 @@ function _set_mesh!(vis, model::RobotZoo.Quadrotor; scaling=1.0, color=colorant"
     robot_obj = MeshFileGeometry(obj)
     mat = MeshPhongMaterial(color=color)
     setobject!(vis["geom"], robot_obj, mat)
+    if hasfield(L, :ned)
+        model.ned && settransform!(vis["geom"], LinearMap(RotX(pi)))
+    end
+end
+function visualize!(vis, model::RobotZoo.Quadrotor, x::StaticVector)
+    xbar = RBState(model, x)
+    if model.ned
+        r = position(xbar)
+        v = linear_velocity(xbar)
+        r = SA[r[1],-r[2],-r[3]]
+        v = SA[v[1],-v[2],-v[3]]
+        xbar = RBState(r, RotX(pi)*orientation(xbar), v, angular_velocity(xbar)) 
+    end
+    visualize!(vis, xbar, addrobot)
+end
+
+function visualize!(vis, model::RobotZoo.PlanarQuadrotor, x::StaticVector)
+    py,pz = x[1], x[2]
+    θ = x[3]
+    settransform!(vis["robot"], compose(Translation(0,py,pz), LinearMap(RotX(θ))))
 end
 
 # Yak Plane
