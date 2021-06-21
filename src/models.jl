@@ -172,7 +172,7 @@ function _set_mesh!(vis, model::L;
         model.ned && settransform!(vis["geom"], LinearMap(RotX(pi)))
     end
 end
-function visualize!(vis, model::RobotZoo.Quadrotor, x::StaticVector)
+function visualize!(vis, model::RobotZoo.Quadrotor, x::StaticVector, addrobot::Bool = false)
     xbar = RBState(model, x)
     if model.ned
         r = position(xbar)
@@ -184,10 +184,10 @@ function visualize!(vis, model::RobotZoo.Quadrotor, x::StaticVector)
     visualize!(vis, xbar, addrobot)
 end
 
-function visualize!(vis, model::RobotZoo.PlanarQuadrotor, x::StaticVector)
+function visualize!(vis, model::RobotZoo.PlanarQuadrotor, x::StaticVector, addrobot::Bool = false)
     py,pz = x[1], x[2]
     θ = x[3]
-    settransform!(vis["robot"], compose(Translation(0,py,pz), LinearMap(RotX(θ))))
+    settransform!(vis["robot"], compose(Translation(0,py,pz), LinearMap(RotX(θ))), addrobot)
 end
 
 # Yak Plane
